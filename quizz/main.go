@@ -22,7 +22,7 @@ func readCSVFile(fileName string) *[]quizzEntry {
 	if err != nil {
 		fmt.Printf("Error reading file: %v", err)
 	}
-
+	// defer = execute when surrounding function returns
 	defer f.Close()
 
 	csvReader := csv.NewReader(f)
@@ -41,15 +41,15 @@ func readCSVFile(fileName string) *[]quizzEntry {
 
 func main() {
 	entryList := readCSVFile("questions.csv")
-
 	timeLimit := flag.Int("time", 10, "time limit to complete quizz, default 10 seconds")
 	flag.Parse()
 	timer := time.NewTimer(time.Duration(*timeLimit) * time.Second)
+	correct_answers := 0
 
 	fmt.Print("Press Enter to start the quizz...\n")
 	fmt.Scanln()
-	correct_answers := 0
 
+	// label for a loop to break anywhere
 quizzloop:
 	for index, entry := range *entryList {
 		fmt.Printf("Problem %v: %v \n", index+1, entry.question)
@@ -79,6 +79,7 @@ quizzloop:
 	fmt.Printf("You got %v from %v correct answers", correct_answers, len(*entryList))
 }
 
+// function get passes a write only channel (because channel are created using make they are always passed as reference)
 func readFromStdin(channel chan<- string) {
 	var answer string
 	fmt.Scanf("%s\n", &answer)

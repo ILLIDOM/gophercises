@@ -9,12 +9,12 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-var todoBucket = []byte("todos")
-var db *bolt.DB
+var todoBucket = []byte("todos") // in memory bucket holding todos after fetch from db
+var db *bolt.DB                  // db connection
 
 type Todo struct {
-	Id   int
-	Name string
+	Id   int    // auto generated id used as key in database
+	Name string // name of todo used as value in database
 }
 
 func Init(dbPath string) error {
@@ -81,7 +81,11 @@ func AddTodo(todo string) (int, error) {
 	return id, nil
 }
 
-func RemoveTodo(todo Todo) {
+func RemoveTodo(todoId int) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(todoBucket)
+		return bucket.Delete(itob(todoId))
+	})
 }
 
 // converts integer to bytes array

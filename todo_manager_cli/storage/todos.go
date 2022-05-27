@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -13,8 +14,9 @@ var todoBucket = []byte("todos") // in memory bucket holding todos after fetch f
 var db *bolt.DB                  // db connection
 
 type Todo struct {
-	Id   int    // auto generated id used as key in database
-	Name string // name of todo used as value in database
+	Id        int    // auto generated id used as key in database
+	Name      string // name of todo used as value in database
+	Completed bool   // flag showing if a todo is completed or not
 }
 
 func Init(dbPath string) error {
@@ -37,10 +39,12 @@ func GetTodos() ([]Todo, error) {
 		bucket := tx.Bucket(todoBucket)
 		c := bucket.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			todos = append(todos, Todo{
-				Id:   btoi(k),
-				Name: string(v),
-			})
+			todo := Todo{}
+			err := json.Unmarshal(v, &todo)
+			if err != nil {
+				fmt.Println("Error decoding todo", err)
+			}
+			todos = append(todos, todo)
 		}
 		return nil
 	})
@@ -52,26 +56,42 @@ func GetTodos() ([]Todo, error) {
 	return todos, nil
 }
 
-func PrintTodos(todos []Todo) {
+// prints todos, all can toggle to show also completed todos
+func PrintTodos(todos []Todo, all bool) {
 	if len(todos) == 0 {
 		fmt.Println("You don't have any todos!")
 		return
 	}
 	fmt.Println("Open todos:")
 	for index, todo := range todos {
-		fmt.Printf("%v. %s\n", index+1, todo.Name)
+		var status string
+		if todo.Completed {
+			status = "completed"
+		} else {
+			status = "not completed"
+		}
+		if all || !todo.Completed {
+			fmt.Printf("%v. %s: %v\n", index+1, todo.Name, status)
+		}
 	}
 }
 
 func AddTodo(todo string) (int, error) {
 	var id int
+	var new_todo = Todo{}
 
 	err := db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(todoBucket)
 		id64, _ := bucket.NextSequence()
 		id = int(id64)
-		key := itob(id)
-		return bucket.Put(key, []byte(todo))
+		key := itob(id) //convert id to byte array
+		new_todo.Id = id
+		new_todo.Name = todo
+		encoded_todo, err := json.Marshal(new_todo)
+		if err != nil {
+			fmt.Println("Error encoding todo", err)
+		}
+		return bucket.Put(key, encoded_todo)
 	})
 
 	if err != nil {
@@ -81,6 +101,21 @@ func AddTodo(todo string) (int, error) {
 	return id, nil
 }
 
+// marks a todo as done
+func MarkTodoAsDone(todo Todo) error {
+	todo.Completed = true
+
+	return db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(todoBucket)
+		encoded_todo, err := json.Marshal(todo)
+		if err != nil {
+			fmt.Println("Error encoding todo", err)
+		}
+		return bucket.Put(itob(todo.Id), encoded_todo)
+	})
+}
+
+// removes a todo from the database
 func RemoveTodo(todoId int) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(todoBucket)

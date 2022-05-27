@@ -3,6 +3,6 @@ package cmd
 import "github.com/spf13/cobra"
 
 var RootCmd = &cobra.Command{
-	Use:   "task",
-	Short: "task is a CLI todo manager",
+	Use:   "todo",
+	Short: "todo is a CLI todo manager",
 }

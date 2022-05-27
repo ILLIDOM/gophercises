@@ -8,7 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var all bool //flag to show also completed todos
+
 func init() {
+	listCmd.Flags().BoolVar(&all, "all", false, "Flag to show also completed todos")
 	RootCmd.AddCommand(listCmd)
 }
 
@@ -21,6 +24,6 @@ var listCmd = &cobra.Command{
 			fmt.Println("ERROR: could no fetch todos:", err)
 			os.Exit(1)
 		}
-		storage.PrintTodos(todos)
+		storage.PrintTodos(todos, all)
 	},
 }
